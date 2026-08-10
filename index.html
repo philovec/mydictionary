@@ -5,28 +5,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>語学・学習用 My辞書</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        /* 全体のレイアウト調整 */
+        body { 
+            font-family: sans-serif; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 15px; 
+            background-color: #f8f9fa;
+            box-sizing: border-box;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+
         .hidden { display: none !important; }
-        .screen { padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
         
-        /* タブデザイン */
-        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #007bff; }
-        .tab-btn { flex: 1; padding: 10px; cursor: pointer; background: #f8f9fa; border: none; font-size: 16px; }
+        /* 画面コンテナのカード化 */
+        .screen { 
+            padding: 20px; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        @media (max-width: 480px) {
+            .screen { padding: 15px; }
+        }
+        
+        /* タブデザイン（スマホでタップしやすい高さに） */
+        .tabs { 
+            display: flex; 
+            margin-bottom: 20px; 
+            border-bottom: 2px solid #007bff; 
+            border-radius: 4px 4px 0 0;
+            overflow: hidden;
+        }
+        .tab-btn { 
+            flex: 1; 
+            padding: 12px 10px; 
+            cursor: pointer; 
+            background: #e9ecef; 
+            border: none; 
+            font-size: 16px; 
+            transition: background 0.2s;
+        }
         .tab-btn.active { background: #007bff; color: white; font-weight: bold; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        /* フォーム系 */
-        input, select, textarea { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; }
-        textarea { height: 100px; }
-        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        /* フォーム系（フォントサイズ16pxでiOSのズームを防止） */
+        input, select, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 8px 0 16px 0; 
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px; 
+        }
+        textarea { height: 120px; resize: vertical; }
+        
+        /* ボタン（スマホで押しやすいサイズに、横並び対応） */
+        button { 
+            width: 100%;
+            padding: 12px 15px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: bold;
+        }
         button:hover { background: #0056b3; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         
+        /* 検索ボタンと入力欄の横並び（PC/スマホ両対応） */
+        .search-box {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .search-box input { margin: 0; }
+        .search-box button { width: auto; white-space: nowrap; padding: 10px 20px; }
+
+        /* アクションボタンの並び（保存・キャンセル） */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn-group button { flex: 1; }
+        @media (max-width: 480px) {
+            .btn-group { flex-direction: column; }
+        }
+        
         /* 履歴リストデザイン */
-        .history-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .history-item { border-bottom: 1px solid #eee; padding: 12px 0; }
         .history-term { font-weight: bold; color: #333; font-size: 1.1em; }
-        .history-desc { color: #555; margin-top: 5px; }
+        .history-desc { color: #555; margin-top: 5px; font-size: 0.95em; line-Updates; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -47,8 +123,10 @@
 
         <!-- 検索タブ -->
         <div id="search-tab" class="tab-content active">
-            <input type="text" id="search-input" placeholder="用語を入力 (例: Python)">
-            <button id="search-btn">検索</button>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="用語を入力 (例: Python)">
+                <button id="search-btn">検索</button>
+            </div>
 
             <div id="search-result-area" class="hidden" style="margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc;">
                 <p id="status-msg" style="font-weight:bold;"></p>
@@ -58,16 +136,18 @@
                 <textarea id="result-explanation"></textarea>
                 <label>種別</label>
                 <select id="result-kind"></select>
-                <br><br>
-                <button id="save-btn">保存する</button>
-                <button id="cancel-btn" style="background:#6c757d;">キャンセル</button>
+                
+                <div class="btn-group">
+                    <button id="save-btn">保存する</button>
+                    <button id="cancel-btn" style="background:#6c757d;">キャンセル</button>
+                </div>
             </div>
         </div>
 
         <!-- 履歴タブ -->
         <div id="history-tab" class="tab-content">
             <select id="history-kind"></select>
-            <button id="shuffle-btn" class="hidden" style="background:#28a745;">シャッフル</button>
+            <button id="shuffle-btn" class="hidden" style="background:#28a745; margin-bottom: 15px;">シャッフル</button>
             
             <div id="history-list" style="margin-top: 20px;"></div>
             <button id="load-more-btn" class="hidden" style="margin-top: 15px; width: 100%;">次の50件を表示</button>
