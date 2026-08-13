@@ -190,6 +190,11 @@ class HistoryController {
         document.getElementById('history-kind').addEventListener('change', (e) => this.fetchData(e.target.value));
         document.getElementById('shuffle-btn').addEventListener('click', () => this.shuffleAndRender());
         document.getElementById('load-more-btn').addEventListener('click', () => this.renderNext());
+        document.getElementById('history-list').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                this.deleteItem(e.target.dataset.term);
+            }
+        });
     }
 
     initKinds(kinds) {
@@ -239,6 +244,7 @@ class HistoryController {
             div.innerHTML = `
                 <div class="history-term">${this.escapeHTML(item.term)}</div>
                 <div class="history-desc">${this.escapeHTML(item.explanation).replace(/\n/g, '<br>')}</div>
+                <button class="delete-btn" data-term="${this.escapeHTML(item.term)}">削除</button>
             `;
             listDiv.appendChild(div);
         });
@@ -260,6 +266,19 @@ class HistoryController {
         document.getElementById('load-more-btn').classList.add('hidden');
     }
 
+    deleteItem(term) {
+        if (!confirm(`「${term}」を削除しますか？`)) return;
+
+        this.dbApi.callRpc('delete_data', { p_term: term })
+            .then(() => {
+                alert("削除しました！");
+                // 削除後に再取得して表示を更新
+                const kindId = document.getElementById('history-kind').value;
+                this.fetchData(kindId);
+            })
+            .catch(e => alert("削除エラー: " + e.message));
+    }
+    
     escapeHTML(str) {
         return str.replace(/[&<>'"]/g, tag => ({'&': '&amp;','<': '&lt;','>': '&gt;',"'": '&#39;','"': '&quot;'}[tag] || tag));
     }
