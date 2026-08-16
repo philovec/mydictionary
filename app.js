@@ -60,7 +60,7 @@ class GeminiAPI {
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.API_KEY}`;
         
-        const prompt = `「${term}」という言葉・用語の意味を、語学学習者向けに国語辞典のように分かりやすく要約してください。
+        const prompt = `「${term}」という言葉・用語の意味を、国語辞典のように分かりやすく要約してください。
 【ルール】
 ・要約のみを50文字〜100文字程度で出力してください。
 ・「〜という意味です」などの挨拶や前置き、解説文以外の無駄なテキストは一切出力しないでください。`;
