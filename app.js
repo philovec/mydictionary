@@ -91,18 +91,22 @@ class GeminiAPI {
 }
 
 /**
- * 3. 検索タブ 制御クラス (改善版)
+ * 3. 検索・登録タブ 制御クラス (手動入力・AI取得対応 ＋ 自動重複チェック版)
  */
 class SearchController {
     constructor(dbApi) {
         this.dbApi = dbApi;
+        this.checkTimer = null; // ★タイマー用の変数を追加
         this.bindEvents();
     }
     
     bindEvents() {
-        document.getElementById('search-btn').addEventListener('click', () => this.handleSearch());
+        // ★ボタンクリックではなく、テキスト入力(input)イベントを監視する
+        document.getElementById('result-term').addEventListener('input', () => this.handleInput());
+        
+        document.getElementById('gemini-btn').addEventListener('click', () => this.handleGeminiSearch());
         document.getElementById('save-btn').addEventListener('click', () => this.handleSave());
-        document.getElementById('cancel-btn').addEventListener('click', () => this.reset());
+        document.getElementById('clear-btn').addEventListener('click', () => this.reset());
     }
 
     async initKinds(kinds) {
@@ -110,23 +114,40 @@ class SearchController {
         select.innerHTML = kinds.map(k => `<option value="${k.kind_id}">${k.kind_name}</option>`).join('');
     }
 
-    async handleSearch() {
-        const term = document.getElementById('search-input').value.trim();
-        if (!term) return;
+    // ★入力のたびに呼ばれる処理（ディバウンス）
+    handleInput() {
+        const term = document.getElementById('result-term').value.trim();
+        const msgEl = document.getElementById('status-msg');
 
-        document.getElementById('search-btn').disabled = true;
-        document.getElementById('status-msg').textContent = "検索中...";
-        document.getElementById('search-result-area').classList.remove('hidden');
+        // 前回のタイマーが残っていればキャンセル（連続通信を防止）
+        if (this.checkTimer) {
+            clearTimeout(this.checkTimer);
+        }
+
+        // 入力が空になった場合はメッセージを消して終了
+        if (!term) {
+            msgEl.textContent = "";
+            return;
+        }
+
+        // 入力中はフィードバックを表示
+        msgEl.textContent = "入力待機中...";
+        msgEl.style.color = "#6c757d";
+
+        // 入力が止まってから0.6秒(600ミリ秒)後にDBチェックを実行
+        this.checkTimer = setTimeout(() => {
+            this.handleDbCheck(term);
+        }, 600);
+    }
+
+    // DBに既に登録されているか確認する機能（引数でtermを受け取るように変更）
+    async handleDbCheck(term) {
+        const msgEl = document.getElementById('status-msg');
+        msgEl.textContent = "確認中...";
+        msgEl.style.color = "#17a2b8";
 
         try {
-            // APIキーはログイン時に取得済みのため、そのまま完全に並列実行（超高速化）
-            const [geminiExtract, dbCheck] = await Promise.all([
-                GeminiAPI.search(term),
-                this.dbApi.callRpc('check_term', { p_term: term }).then(r => r[0])
-            ]);
-
-            document.getElementById('result-term').value = term;
-            const msgEl = document.getElementById('status-msg');
+            const dbCheck = await this.dbApi.callRpc('check_term', { p_term: term }).then(r => r[0]);
             
             if (dbCheck && dbCheck.is_exist) {
                 msgEl.textContent = "※既に登録済みです（保存で上書きされます）";
@@ -134,14 +155,37 @@ class SearchController {
                 document.getElementById('result-explanation').value = dbCheck.explanation;
                 document.getElementById('result-kind').value = dbCheck.kind_id;
             } else {
-                msgEl.textContent = "※新規登録";
+                msgEl.textContent = "※未登録の用語です";
                 msgEl.style.color = "blue";
-                document.getElementById('result-explanation').value = geminiExtract;
             }
         } catch (e) {
-            alert("検索エラー: " + e.message);
+            console.error("確認エラー: ", e);
+            msgEl.textContent = "通信エラーが発生しました";
+            msgEl.style.color = "red";
+        }
+    }
+
+    // AIで意味を自動取得する機能
+    async handleGeminiSearch() {
+        const term = document.getElementById('result-term').value.trim();
+        if (!term) {
+            alert("意味を取得したい用語を入力してください。");
+            return;
+        }
+
+        const btn = document.getElementById('gemini-btn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "AIで取得中...";
+
+        try {
+            const geminiExtract = await GeminiAPI.search(term);
+            document.getElementById('result-explanation').value = geminiExtract;
+        } catch (e) {
+            alert("AI取得エラー: " + e.message);
         } finally {
-            document.getElementById('search-btn').disabled = false;
+            btn.textContent = originalText;
+            btn.disabled = false;
         }
     }
 
@@ -160,6 +204,7 @@ class SearchController {
                 p_explanation: explanation 
             });
             alert("保存しました！");
+            
             this.reset();
         } catch (e) {
             alert("保存エラー: " + e.message);
@@ -168,9 +213,21 @@ class SearchController {
         }
     }
 
+    // フォームを初期状態に戻す
     reset() {
-        document.getElementById('search-input').value = '';
-        document.getElementById('search-result-area').classList.add('hidden');
+        // ★リセット時に動作中のタイマーがあれば止める
+        if (this.checkTimer) {
+            clearTimeout(this.checkTimer);
+        }
+
+        document.getElementById('result-term').value = '';
+        document.getElementById('result-explanation').value = '';
+        document.getElementById('status-msg').textContent = '';
+        
+        const kindSelect = document.getElementById('result-kind');
+        if (kindSelect.options.length > 0) {
+            kindSelect.selectedIndex = 0;
+        }
     }
 }
 

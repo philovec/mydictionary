@@ -121,26 +121,25 @@
             <button class="tab-btn" data-target="history-tab">履歴・学習</button>
         </div>
 
-        <!-- 検索タブ -->
+        <!-- 検索・登録タブ -->
         <div id="search-tab" class="tab-content active">
+            <p id="status-msg" style="font-weight:bold; min-height: 1.5em; margin: 0 0 10px 0;"></p>
+            
+            <label>用語</label>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="用語を入力 (例: Python)">
-                <button id="search-btn">検索</button>
+                <input type="text" id="result-term" placeholder="用語を入力 (例: Python)">
             </div>
 
-            <div id="search-result-area" class="hidden" style="margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc;">
-                <p id="status-msg" style="font-weight:bold;"></p>
-                <label>用語</label>
-                <input type="text" id="result-term">
-                <label>意味</label>
-                <textarea id="result-explanation"></textarea>
-                <label>種別</label>
-                <select id="result-kind"></select>
-                
-                <div class="btn-group">
-                    <button id="save-btn">保存する</button>
-                    <button id="cancel-btn" style="background:#6c757d;">キャンセル</button>
-                </div>
+            <label>意味</label>
+            <textarea id="result-explanation" placeholder="手動で入力するか、下のボタンでAIから取得してください"></textarea>
+            <button id="gemini-btn" style="background:#6f42c1; margin-bottom: 16px;">AIで意味を自動取得</button>
+
+            <label>種別</label>
+            <select id="result-kind"></select>
+            
+            <div class="btn-group">
+                <button id="save-btn">保存する</button>
+                <button id="clear-btn" style="background:#6c757d;">クリア</button>
             </div>
         </div>
 
