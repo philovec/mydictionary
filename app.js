@@ -244,12 +244,24 @@ class HistoryController {
     }
 
     bindEvents() {
-        document.getElementById('history-kind').addEventListener('change', (e) => this.fetchData(e.target.value));
+        const minLevelSelect = document.getElementById('history-min-level');
+        const kindSelect = document.getElementById('history-kind');
+
+        document.getElementById('history-kind').addEventListener('change', (e) => this.fetchData(kindSelect.value, minLevelSelect.value));
         document.getElementById('shuffle-btn').addEventListener('click', () => this.shuffleAndRender());
+        document.getElementById('history-min-level').addEventListener('change', (e) => this.changeMinLevel(minLevelSelect.value));
         document.getElementById('load-more-btn').addEventListener('click', () => this.renderNext());
         document.getElementById('history-list').addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-btn')) {
                 this.deleteItem(e.target.dataset.term);
+            };
+        });
+        document.getElementById('history-list').addEventListener('change', async (e) => {
+            if (e.target.classList.contains('history-level')) {
+                const isSuccess = await this.updateLevel(e.target.dataset.term, e.target.value);
+                if (!isSuccess) {
+                    e.target.value = this.dataList.find(item => item.term === e.target.dataset.term).level;
+                }
             }
         });
     }
@@ -260,12 +272,12 @@ class HistoryController {
                            kinds.map(k => `<option value="${k.kind_id}">${k.kind_name}</option>`).join('');
     }
 
-    async fetchData(kindId) {
+    async fetchData(kindId, level = 1) {
         if (!kindId) return this.clear();
         
         try {
             // JS側に一括で全件取得して保持する（毎回のAPI通信を減らすため）
-            this.dataList = await this.dbApi.callRpc('get_data', { p_kind_id: parseInt(kindId, 10) });
+            this.dataList = await this.dbApi.callRpc('get_data', { p_kind_id: parseInt(kindId, 10), p_level: parseInt(level, 10) });
             if (this.dataList.length > 0) {
                 document.getElementById('shuffle-btn').classList.remove('hidden');
                 this.displayCount = 0;
@@ -291,6 +303,13 @@ class HistoryController {
         this.renderNext();
     }
 
+    changeMinLevel(level) {
+        const kindId = document.getElementById('history-kind').value;
+        if (kindId) {
+            this.fetchData(kindId, level);
+        }
+    }
+
     renderNext() {
         const slice = this.dataList.slice(this.displayCount, this.displayCount + this.PAGE_SIZE);
         const listDiv = document.getElementById('history-list');
@@ -301,6 +320,11 @@ class HistoryController {
             div.innerHTML = `
                 <div class="history-term">${this.escapeHTML(item.term)}</div>
                 <div class="history-desc">${this.escapeHTML(item.explanation).replace(/\n/g, '<br>')}</div>
+                <select class="history-level" data-term="${this.escapeHTML(item.term)}">
+                    <option value="1" ${item.level === 1 ? 'selected' : ''}>1</option>
+                    <option value="2" ${item.level === 2 ? 'selected' : ''}>2</option>
+                    <option value="3" ${item.level === 3 ? 'selected' : ''}>3</option>
+                </select>
                 <button class="delete-btn" data-term="${this.escapeHTML(item.term)}">削除</button>
             `;
             listDiv.appendChild(div);
@@ -323,17 +347,33 @@ class HistoryController {
         document.getElementById('load-more-btn').classList.add('hidden');
     }
 
-    deleteItem(term) {
+    async updateLevel(term, newLevel) {
+        try {
+            await this.dbApi.callRpc('update_level', { p_term: term, p_level: parseInt(newLevel, 10) });
+            alert(`「${term}」のレベルを更新しました！`);
+            
+            const kindId = document.getElementById('history-kind').value;
+            const level = document.getElementById('history-min-level').value;
+            return true;
+        } catch (e) {
+            alert("更新エラー: " + e.message);
+            return false;
+        }
+    }
+
+    async deleteItem(term) {
         if (!confirm(`「${term}」を削除しますか？`)) return;
 
-        this.dbApi.callRpc('delete_data', { p_term: term })
-            .then(() => {
-                alert("削除しました！");
-                // 削除後に再取得して表示を更新
-                const kindId = document.getElementById('history-kind').value;
-                this.fetchData(kindId);
-            })
-            .catch(e => alert("削除エラー: " + e.message));
+        try {
+            await this.dbApi.callRpc('delete_data', { p_term: term });
+            alert("削除しました！");
+            
+            const kindId = document.getElementById('history-kind').value;
+            const level = document.getElementById('history-min-level').value;
+            await this.fetchData(kindId, level);
+        } catch (e) {
+            alert("削除エラー: " + e.message);
+        }
     }
     
     escapeHTML(str) {
