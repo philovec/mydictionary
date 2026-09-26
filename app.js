@@ -96,13 +96,14 @@ class GeminiAPI {
 class SearchController {
     constructor(dbApi) {
         this.dbApi = dbApi;
-        this.checkTimer = null; // ★タイマー用の変数を追加
+        this.checkTimer = null;
         this.bindEvents();
     }
     
     bindEvents() {
         // ★ボタンクリックではなく、テキスト入力(input)イベントを監視する
         document.getElementById('result-term').addEventListener('input', () => this.handleInput());
+        document.getElementById('match-candidates').addEventListener('change', (e) => this.handleCandidateSelect(e));
         
         document.getElementById('gemini-btn').addEventListener('click', () => this.handleGeminiSearch());
         document.getElementById('save-btn').addEventListener('click', () => this.handleSave());
@@ -137,32 +138,64 @@ class SearchController {
         // 入力が止まってから0.6秒(600ミリ秒)後にDBチェックを実行
         this.checkTimer = setTimeout(() => {
             this.handleDbCheck(term);
-        }, 600);
+        }, 600);　
     }
 
-    // DBに既に登録されているか確認する機能（引数でtermを受け取るように変更）
+    // DBに既に登録されているか確認する機能
     async handleDbCheck(term) {
         const msgEl = document.getElementById('status-msg');
+        const candidateWrapper = document.getElementById('candidate-wrapper');
+        const candidateSelect = document.getElementById('match-candidates');
+
         msgEl.textContent = "確認中...";
         msgEl.style.color = "#17a2b8";
 
         try {
-            const dbCheck = await this.dbApi.callRpc('check_term', { p_term: term }).then(r => r[0]);
-            
-            if (dbCheck && dbCheck.is_exist) {
-                msgEl.textContent = "※既に登録済みです（保存で上書きされます）";
+            // 配列で検索結果を取得
+            const list = await this.dbApi.callRpc('check_term', { p_term: term });
+            this.currentCandidates = list || [];
+
+            if (this.currentCandidates.length > 0) {
+                msgEl.textContent = `※${this.currentCandidates.length}件の登録済み用語が見つかりました`;
                 msgEl.style.color = "orange";
-                document.getElementById('result-explanation').value = dbCheck.explanation;
-                document.getElementById('result-kind').value = dbCheck.kind_id;
+
+                // 候補ドロップダウンを生成
+                candidateSelect.innerHTML = '<option value="">-- 候補を選択してください --</option>' +
+                    this.currentCandidates.map((item, index) => 
+                        `<option value="${index}">${item.term}</option>`
+                    ).join('');
+
+                candidateWrapper.style.display = "block";
             } else {
                 msgEl.textContent = "※未登録の用語です";
                 msgEl.style.color = "blue";
+                this.clearCandidates();
             }
         } catch (e) {
             console.error("確認エラー: ", e);
             msgEl.textContent = "通信エラーが発生しました";
             msgEl.style.color = "red";
+            this.clearCandidates();
         }
+    }
+
+    handleCandidateSelect(e) {
+        const index = e.target.value;
+        if (index === "") return;
+
+        const selected = this.currentCandidates[parseInt(index, 10)];
+        if (selected) {
+            document.getElementById('result-term').value = selected.term; // 正式な用語名に補完
+            document.getElementById('result-explanation').value = selected.explanation;
+            document.getElementById('result-kind').value = selected.kind_id;
+        }
+    }
+
+    // 候補UIの初期化用ヘルパー関数
+    clearCandidates() {
+        this.currentCandidates = [];
+        document.getElementById('candidate-wrapper').style.display = "none";
+        document.getElementById('match-candidates').innerHTML = "";
     }
 
     // AIで意味を自動取得する機能
