@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語学・学習用 My辞書</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ログイン画面 -->
+    <div id="login-screen" class="screen">
+        <h2>My辞書 ログイン</h2>
+        <input type="password" id="login-password" placeholder="パスワードを入力">
+        <button id="login-btn">ログイン</button>
+    </div>
+
+    <!-- メイン画面 -->
+    <div id="main-screen" class="screen hidden">
+        <div class="tabs">
+            <button class="tab-btn active" data-target="search-tab">検索・登録</button>
+            <button class="tab-btn" data-target="history-tab">履歴・学習</button>
+        </div>
+
+        <!-- 検索・登録タブ -->
+        <div id="search-tab" class="tab-content active">
+            <p id="status-msg" style="font-weight:bold; min-height: 1.5em; margin: 0 0 10px 0;"></p>
+            
+            <label>用語</label>
+            <div class="search-box">
+                <input type="text" id="result-term" placeholder="用語を入力 (例: Python)">
+            </div>
+
+            <!-- ★追加: 部分一致候補を表示するドロップダウン -->
+            <div id="candidate-wrapper" style="display: none; margin-bottom: 12px;">
+                <label style="color: #17a2b8;">既存の該当用語を選択:</label>
+                <select id="match-candidates" tabindex="-1" ></select>
+            </div>
+
+            <label>意味</label>
+            <textarea id="result-explanation" placeholder="手動で入力するか、下のボタンでAIから取得してください"></textarea>
+            <button id="gemini-btn" style="background:#6f42c1; margin-bottom: 16px;">AIで意味を自動取得</button>
+
+            <label>種別</label>
+            <select id="result-kind"></select>
+            
+            <div class="btn-group">
+                <button id="save-btn">保存する</button>
+                <button id="clear-btn" style="background:#6c757d;">クリア</button>
+            </div>
+        </div>
+
+        <!-- 履歴タブ -->
+        <div id="history-tab" class="tab-content">
+            <div class="filter-group">
+                <select id="history-kind"></select>
+                <select id="history-min-level">
+                    <option value="1">最小Lv 1</option>
+                    <option value="2">最小Lv 2</option>
+                    <option value="3">最小Lv 3</option>
+                </select>
+            </div>
+            
+            <button id="shuffle-btn" class="hidden" style="background:#28a745; margin-bottom: 15px;">シャッフル</button>
+            
+            <div id="history-list" style="margin-top: 10px;"></div>
+            <button id="load-more-btn" class="hidden" style="margin-top: 15px; width: 100%;">次の50件を表示</button>
+        </div>
+    </div>
+
+<script src="app.js"></script>
+</body>
+</html>
